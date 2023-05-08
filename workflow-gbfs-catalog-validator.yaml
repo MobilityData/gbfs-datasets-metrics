@@ -1,0 +1,74 @@
+#
+# Validates all GBFS datasets by downloading a JSON version of the system.csv.
+# Depends on  workflow-gbfs-validator workflow
+#
+## Input:
+#  {
+#    "url": "https://storage.googleapis.com/md-public-playground/gbfs-system.json",
+#    "resultBucketName": "mobilitydata-gbfs-validation-reporting"
+#  }
+## Output:
+# No output
+main:
+    params: [args]
+    steps:
+        - validate:
+            try:
+                steps:
+                    - init:
+                        assign:
+                        - resultsBucketName: ${args.resultBucketName}
+                        - catalogUrl: ${args.url}
+                        - validateWorkflow: "workflow-gbfs-validator"
+                        - location: "us-central1"
+                    - initLog:
+                        call: sys.log
+                        args:
+                            text: ${"Validating catalog from " + catalogUrl}
+                            severity: INFO
+                    - retrieveCatalog:
+                        call: http.get
+                        args:
+                            url: ${catalogUrl}
+                        result: catalogResponse
+                    - datasetResponseLog:
+                        call: sys.log
+                        args:
+                            text: ${"Loaded catalog database with " + len(catalogResponse.body) + " datasets"}
+                            severity: INFO
+                    - datasetCounter:
+                        assign:
+                            - datasetCount: ${len(catalogResponse.body)}
+                    - validationLoop:
+                        parallel:
+                          concurrency_limit: 5
+                          for:
+                            value: datasetIndex
+                            range: [0, len(catalogResponse.body)] # inclusive beginning and ending values
+                            steps:
+                                - datasetLog:
+                                    call: sys.log
+                                    args:
+                                        text: ${"Validating dataset " + catalogResponse.body[datasetIndex].Name}
+                                        severity: INFO
+                                - callValidateWorkflow:
+                                    call: googleapis.workflowexecutions.v1beta.projects.locations.workflows.executions.run
+                                    args:
+                                        workflow_id: ${validateWorkflow}
+                                        location: ${location}
+                                        project_id: ${sys.get_env("GOOGLE_CLOUD_PROJECT_ID")}
+                                        argument:
+                                            "Auto-Discovery URL": ${catalogResponse.body[datasetIndex]["Auto-Discovery URL"]}
+                                            "System ID": ${catalogResponse.body[datasetIndex]["System ID"]}
+                                            "Location": ${catalogResponse.body[datasetIndex]["Location"]}
+                                    result: validateDatasetResponse
+                                - validateDatasetResponseLog:
+                                    call: sys.log
+                                    args:
+                                        text: ${"Dataset validation response " + json.encode_to_string(validateDatasetResponse)}
+                                        severity: INFO                                                       
+            except:
+                as: e
+                steps:
+                    - unhandled_exception:
+                        raise: ${e}

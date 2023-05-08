@@ -1,0 +1,93 @@
+#
+# Validates a GBFS dataset given the system.csv row as a JSON parameter
+#
+## Input
+#  {
+#    "Country Code": "AE",
+#    "Name": "Careem BIKE",
+#    "Location": "Dubai, AE",
+#    "System ID": "careem_bike",
+#    "URL": "https://www.careem.com/en-ae/careem-bike/",
+#    "Auto-Discovery URL": "https://dubai.publicbikesystem.net/customer/gbfs/v2/gbfs.json",
+#    "Validation Report": "https://gbfs-validator.netlify.app/?url=https%3A%2F%2Fdubai.publicbikesystem.net%2Fcustomer%2Fgbfs%2Fv2%2Fgbfs.json"
+#  }
+##
+# Output:
+# {
+#   "dataset": {
+#     "autoDiscoveryUrl": "https://mds.bird.co/gbfs/v42/public/laval/gbfs.json",
+#     "location": "Madrid, ES",
+#     "systemId": "careem_bike"
+#   },
+#   "execution": {
+#     "reportFilename": "Madrid_ES__careem_bike.json",
+#     "status": "succeeded"
+#   },
+#   "summary": {
+#     "validatorVersion": "1.0.0",
+#     "versionUnimplemented": true
+#   }
+# }
+
+main:
+    params: [args]
+    steps:
+        - validate:
+            try:
+                steps:
+                    - init:
+                        assign:
+                        - resultsBucketName: mobilitydata-gbfs-validation-results-test
+                        - datasetId: $${text.replace_all_regex(text.replace_all_regex(args["Location"], ",\\s", "_") + args["System ID"], "[\\s/]", "_") + ".json"}
+                        - datasetUrl: $${args["Auto-Discovery URL"]}
+                        - validatorUrl: ${app_gbs_validator_url}
+                    - initLog:
+                        call: sys.log
+                        args:
+                            text: $${"Validating dataset " + datasetUrl}
+                            severity: INFO
+                    - validateDataset:
+                        call: http.post
+                        args:
+                            url: $${validatorUrl}
+                            body:
+                                url: $${datasetUrl}
+                        result: validationResult
+                    - logValidationResults:
+                        call: sys.log
+                        args:
+                            text: $${"Dataset validation HTTP code result " + validationResult.code}
+                            severity: INFO
+                    - persistValidation:      
+                        call: googleapis.storage.v1.objects.insert
+                        args:
+                            bucket: $${resultsBucketName}
+                            uploadType: "media"
+                            name: $${datasetId + ".json"}
+                            body: $${json.decode(validationResult.body)}
+                    - return:
+                        return:
+                            execution:
+                                status: "succeeded"                        
+                                reportFilename: $${datasetId + ".json"}
+                            dataset:
+                                autoDiscoveryUrl: $${args["Auto-Discovery URL"]}
+                                systemId: $${args["System ID"]}
+                                location: $${args["Location"]}
+                            summary: $${json.decode(validationResult.body).summary}
+            except:
+                as: e
+                steps:
+                    - logException:
+                        call: sys.log
+                        args:
+                            text: $${"Error validating dataset " + datasetId + " exception " + json.encode_to_string(e)}
+                            severity: ERROR                
+                    - unhandled_exception:
+                        return:
+                            execution:
+                                status: "failed"
+                            dataset:
+                                autoDiscoveryUrl: $${args["Auto-Discovery URL"]}
+                                systemId: $${args["System ID"]}
+                                location: $${args["Location"]}                            
