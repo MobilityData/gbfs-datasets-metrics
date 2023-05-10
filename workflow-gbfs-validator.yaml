@@ -3,13 +3,12 @@
 #
 ## Input
 #  {
-#    "Country Code": "AE",
-#    "Name": "Careem BIKE",
-#    "Location": "Dubai, AE",
-#    "System ID": "careem_bike",
-#    "URL": "https://www.careem.com/en-ae/careem-bike/",
-#    "Auto-Discovery URL": "https://dubai.publicbikesystem.net/customer/gbfs/v2/gbfs.json",
-#    "Validation Report": "https://gbfs-validator.netlify.app/?url=https%3A%2F%2Fdubai.publicbikesystem.net%2Fcustomer%2Fgbfs%2Fv2%2Fgbfs.json"
+#    "location": "Dubai, AE",
+#    "systemId": "careem_bike",
+#    "autoDiscoveryUrl": "https://dubai.publicbikesystem.net/customer/gbfs/v2/gbfs.json",
+#    "resultsBucketName": "mobilitydata-gbfs-validation-results",
+#    "datasetId": "Dubai_AE_careem_bike"
+#    "reportFilename": "Dubai_AE_careem_bike.json"
 #  }
 ##
 # Output:
@@ -24,8 +23,12 @@
 #     "status": "succeeded"
 #   },
 #   "summary": {
-#     "validatorVersion": "1.0.0",
-#     "versionUnimplemented": true
+#       "errorsCount": 0,
+#       "hasErrors": false,
+#       "validatorVersion": "1.0.0",
+#       "version": {
+#       "detected": "1.0",
+#       "validated": "1.0"
 #   }
 # }
 
@@ -37,10 +40,11 @@ main:
                 steps:
                     - init:
                         assign:
-                        - resultsBucketName: mobilitydata-gbfs-validation-results-test
-                        - datasetId: $${text.replace_all_regex(text.replace_all_regex(args["Location"], ",\\s", "_") + args["System ID"], "[\\s/]", "_") + ".json"}
-                        - datasetUrl: $${args["Auto-Discovery URL"]}
-                        - validatorUrl: ${app_gbs_validator_url}
+                        - resultsBucketName: $${args["resultsBucketName"]}
+                        - datasetId: $${args["datasetId"]}
+                        - reportFilename: $${args["reportFilename"]}
+                        - datasetUrl: $${args["autoDiscoveryUrl"]}
+                        - validatorUrl: ${app_gbs_validator_url} # replaced by terraform variable
                     - initLog:
                         call: sys.log
                         args:
@@ -63,17 +67,25 @@ main:
                         args:
                             bucket: $${resultsBucketName}
                             uploadType: "media"
-                            name: $${datasetId + ".json"}
-                            body: $${json.decode(validationResult.body)}
+                            name: $${reportFilename}
+                            body:
+                                execution:
+                                    status: "succeeded"                        
+                                    reportFilename: $${reportFilename}
+                                dataset:
+                                    autoDiscoveryUrl: $${args["autoDiscoveryUrl"]}
+                                    systemId: $${args["systemId"]}
+                                    location: $${args["location"]}
+                                summary: $${json.decode(validationResult.body).summary}                            
                     - return:
                         return:
                             execution:
                                 status: "succeeded"                        
-                                reportFilename: $${datasetId + ".json"}
+                                reportFilename: $${reportFilename}
                             dataset:
-                                autoDiscoveryUrl: $${args["Auto-Discovery URL"]}
-                                systemId: $${args["System ID"]}
-                                location: $${args["Location"]}
+                                autoDiscoveryUrl: $${args["autoDiscoveryUrl"]}
+                                systemId: $${args["systemId"]}
+                                location: $${args["location"]}
                             summary: $${json.decode(validationResult.body).summary}
             except:
                 as: e
@@ -82,12 +94,27 @@ main:
                         call: sys.log
                         args:
                             text: $${"Error validating dataset " + datasetId + " exception " + json.encode_to_string(e)}
-                            severity: ERROR                
+                            severity: ERROR
+                    - persistErrorValidation:      
+                        call: googleapis.storage.v1.objects.insert
+                        args:
+                            bucket: $${resultsBucketName}
+                            uploadType: "media"
+                            name: $${reportFilename}
+                            body:
+                                execution:
+                                    status: "failed"                        
+                                    reportFilename: $${reportFilename}
+                                dataset:
+                                    autoDiscoveryUrl: $${args["autoDiscoveryUrl"]}
+                                    systemId: $${args["systemId"]}
+                                    location: $${args["location"]}
+                                summary: {}                            
                     - unhandled_exception:
                         return:
                             execution:
                                 status: "failed"
                             dataset:
-                                autoDiscoveryUrl: $${args["Auto-Discovery URL"]}
-                                systemId: $${args["System ID"]}
-                                location: $${args["Location"]}                            
+                                autoDiscoveryUrl: $${args["autoDiscoveryUrl"]}
+                                systemId: $${args["systemId"]}
+                                location: $${args["location"]}                         

@@ -5,7 +5,7 @@
 ## Input:
 #  {
 #    "url": "https://storage.googleapis.com/md-public-playground/gbfs-system.json",
-#    "resultBucketName": "mobilitydata-gbfs-validation-reporting"
+#    "resultsBucketName": "mobilitydata-gbfs-validation-reporting"
 #  }
 ## Output:
 # No output
@@ -17,10 +17,14 @@ main:
                 steps:
                     - init:
                         assign:
-                        - resultsBucketName: ${args.resultBucketName}
+                        - resultsBucketName: ${args.resultsBucketName}
                         - catalogUrl: ${args.url}
                         - validateWorkflow: "workflow-gbfs-validator"
-                        - location: "us-central1"
+                        - location: ${default(map.get(args, "region"), "us-central1")}
+                        - concurrencyLimits: ${default(map.get(args, "concurrencyLimits"), 20)}
+                        - dateTime: ${text.substring(time.format(sys.now()), 0, 16)}
+                        - totalSucceeded: 0
+                        - totalFailed: 0
                     - initLog:
                         call: sys.log
                         args:
@@ -41,34 +45,91 @@ main:
                             - datasetCount: ${len(catalogResponse.body)}
                     - validationLoop:
                         parallel:
-                          concurrency_limit: 5
+                          concurrency_limit: ${concurrencyLimits}
+                          shared: [totalSucceeded, totalFailed]
                           for:
                             value: datasetIndex
-                            range: [0, len(catalogResponse.body)] # inclusive beginning and ending values
+                            range: [0, ${len(catalogResponse.body) -1}] # inclusive beginning and ending values
                             steps:
+                                - datasetVars:
+                                    assign:
+                                    - autoDiscoveryUrl: ${catalogResponse.body[datasetIndex]["Auto-Discovery URL"]}
+                                    - datasetLocation: ${catalogResponse.body[datasetIndex]["Location"]}
+                                    - systemId: ${catalogResponse.body[datasetIndex]["System ID"]}
+                                    - datasetId: ${text.replace_all_regex(datasetLocation, ",|\\s|/", "_")}
+                                    - datasetId: ${datasetId + "_" + systemId}
+                                    - reportFilename: ${dateTime}
+                                    - reportFilename: ${reportFilename + "/" + sys.get_env("GOOGLE_CLOUD_WORKFLOW_EXECUTION_ID")}
+                                    - reportFilename: ${reportFilename + "/" + datasetId + ".json"}                                
                                 - datasetLog:
                                     call: sys.log
                                     args:
                                         text: ${"Validating dataset " + catalogResponse.body[datasetIndex].Name}
                                         severity: INFO
                                 - callValidateWorkflow:
-                                    call: googleapis.workflowexecutions.v1beta.projects.locations.workflows.executions.run
-                                    args:
-                                        workflow_id: ${validateWorkflow}
-                                        location: ${location}
-                                        project_id: ${sys.get_env("GOOGLE_CLOUD_PROJECT_ID")}
-                                        argument:
-                                            "Auto-Discovery URL": ${catalogResponse.body[datasetIndex]["Auto-Discovery URL"]}
-                                            "System ID": ${catalogResponse.body[datasetIndex]["System ID"]}
-                                            "Location": ${catalogResponse.body[datasetIndex]["Location"]}
-                                    result: validateDatasetResponse
-                                - validateDatasetResponseLog:
-                                    call: sys.log
-                                    args:
-                                        text: ${"Dataset validation response " + json.encode_to_string(validateDatasetResponse)}
-                                        severity: INFO                                                       
+                                    try:
+                                        steps:
+                                            - callValidate:
+                                                call: googleapis.workflowexecutions.v1beta.projects.locations.workflows.executions.run
+                                                args:
+                                                    workflow_id: ${validateWorkflow}
+                                                    location: ${location}
+                                                    project_id: ${sys.get_env("GOOGLE_CLOUD_PROJECT_ID")}
+                                                    argument:
+                                                        resultsBucketName: ${resultsBucketName}
+                                                        autoDiscoveryUrl: ${autoDiscoveryUrl}
+                                                        systemId: ${systemId}
+                                                        location: ${datasetLocation}
+                                                        datasetId: ${datasetId}
+                                                        reportFilename: ${reportFilename}
+                                                result: validateDatasetResponse
+                                            - validateDatasetResponseLog:
+                                                call: sys.log
+                                                args:
+                                                    text: ${"Dataset validation response " + json.encode_to_string(validateDatasetResponse)}
+                                                    severity: INFO
+                                            - summarySucceeded:
+                                                assign:
+                                                - totalSucceeded: ${totalSucceeded + 1}                                                
+
+                                    except:
+                                        as: e
+                                        steps:
+                                            - summaryFailed:
+                                                assign:
+                                                - totalFailed: ${totalFailed + 1} 
+                                            - logException:
+                                                call: sys.log
+                                                args:
+                                                    text: ${"Error validating dataset " + datasetId + " exception " + json.encode_to_string(e)}
+                                                    severity: ERROR
+                                            - persistErrorValidation:      
+                                                call: googleapis.storage.v1.objects.insert
+                                                args:
+                                                    bucket: ${resultsBucketName}
+                                                    uploadType: "media"
+                                                    name: ${reportFilename}
+                                                    body:
+                                                        execution:
+                                                            status: "failed"                        
+                                                            reportFilename: ${reportFilename}
+                                                            resultsBucketName: ${resultsBucketName}
+                                                        dataset:
+                                                            autoDiscoveryUrl: ${autoDiscoveryUrl}
+                                                            systemId: ${systemId}
+                                                            location: ${datasetLocation}
+                                                        summary: {}                                         
+
             except:
                 as: e
                 steps:
                     - unhandled_exception:
                         raise: ${e}
+        - return:
+            return:
+                summary:
+                    succeeded: ${totalSucceeded}
+                    failed: ${totalFailed}
+                    total: ${totalSucceeded + totalFailed}
+                    concurrencyLimits: ${concurrencyLimits}
+                    resultsBucketName: ${resultsBucketName}

@@ -47,7 +47,7 @@ resource "google_project_iam_member" "workflow_admin_binding" {
 }
 
 resource "google_storage_bucket" "mobilitydata-gbfs-validation-results" {
-  name          = "mobilitydata-gbfs-validation-results-test"
+  name          = "mobilitydata-gbfs-validation-results"
   location      = "US"
   force_destroy = true
 
@@ -80,3 +80,23 @@ resource "google_workflows_workflow" "workflow-gbfs-catalog-validator" {
 
   depends_on = [google_project_service.workflows]
 }
+
+## Big Query
+
+resource "google_bigquery_dataset" "gbfs-results-dataset" {
+  dataset_id                  = var.gbfs_results_dataset_id
+  friendly_name               = "gbfs_results"
+  description                 = "GBFS Validation Results Dataset"
+  location                    = var.gbfs_results_dataset_location
+  #default_table_expiration_ms = 3600000
+}
+
+resource "google_bigquery_table" "executions_results_table" {
+  dataset_id = var.gbfs_results_dataset_id
+  table_id = var.gbfs_results_dataset_table_id
+
+   schema = "${file("./executions-results-schema.json")}"
+
+   depends_on = [ google_bigquery_dataset.gbfs-results-dataset ]
+}
+

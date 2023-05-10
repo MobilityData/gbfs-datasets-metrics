@@ -1,6 +1,6 @@
-# GBFS Datasets Metrics
+# GBFS Datasets Metrics(POC)
 
-This project setup the requirements infraestructure to process the GBFS metrics based on [GCP workflow](https://cloud.google.com/workflows).
+This work is a Proof of Concept on data pipeline to obtain GBFS datasets validation reports metrics. This project setup the requirements infraestructure to process the GBFS metrics based on [GCP workflow](https://cloud.google.com/workflows).
 
 ## Current Limitation
 
@@ -38,3 +38,26 @@ To overcome this limitation the API services should return the minimum body and 
 # Executing GCP Workflow
 
 Execute `workflow-gbfs-catalog-validator` workflow via command line or GCP console.
+
+# Data Pipeline Workflow
+
+Below is a simplified version of the design, including all workflows and ignoring error scenarios for a high-level understanding.
+
+```mermaid
+stateDiagram-v2
+    [*] --> workflowCatalogValidator
+    workflowCatalogValidator --> retrieveDatasetList
+    retrieveDatasetList --> loop
+    loop --> workflowDatasetValidator
+    workflowDatasetValidator --> callValidatorApi
+    callValidatorApi --> uploadResults
+    uploadResults --> loop
+    uploadResults --> [*]
+%% States
+    workflowCatalogValidator : Workflow Catalog Validator
+    retrieveDatasetList:  Retrieve Dataset List
+    workflowDatasetValidator: Workflow Dataset Validator
+    callValidatorApi: Call Validator Api
+    uploadResults: Upload Results to Cloud Storage
+    loop: Loop
+```
