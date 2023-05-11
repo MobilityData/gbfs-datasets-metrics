@@ -71,7 +71,7 @@
         "type": "INTEGER"
       }
     ],
-    "mode": "NULLABLE",
+    "mode": "REPEATED",
     "name": "filesSummary",
     "type": "RECORD"
   },
