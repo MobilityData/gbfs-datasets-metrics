@@ -32,10 +32,47 @@
         "mode": "NULLABLE",
         "name": "errorsCount",
         "type": "INTEGER"
+      },
+      {
+        "mode": "NULLABLE",
+        "name": "versionUnimplemented",
+        "type": "BOOLEAN"
       }
     ],
     "mode": "NULLABLE",
     "name": "summary",
+    "type": "RECORD"
+  },
+  {
+    "fields": [
+      {
+        "mode": "NULLABLE",
+        "name": "required",
+        "type": "BOOLEAN"
+      },
+      {
+        "mode": "NULLABLE",
+        "name": "exists",
+        "type": "BOOLEAN"
+      },
+      {
+        "mode": "NULLABLE",
+        "name": "hasErrors",
+        "type": "BOOLEAN"
+      },
+      {
+        "mode": "NULLABLE",
+        "name": "file",
+        "type": "STRING"
+      },
+      {
+        "mode": "NULLABLE",
+        "name": "errorsCount",
+        "type": "INTEGER"
+      }
+    ],
+    "mode": "NULLABLE",
+    "name": "filesSummary",
     "type": "RECORD"
   },
   {
@@ -48,6 +85,11 @@
       {
         "mode": "NULLABLE",
         "name": "reportFilename",
+        "type": "STRING"
+      },
+      {
+        "mode": "NULLABLE",
+        "name": "resultsBucketName",
         "type": "STRING"
       }
     ],

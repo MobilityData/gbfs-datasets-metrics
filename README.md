@@ -61,3 +61,10 @@ stateDiagram-v2
     uploadResults: Upload Results to Cloud Storage
     loop: Loop
 ```
+
+# Useful commands
+
+- BigQuery transfer job logs
+```
+bq show --format=prettyjson -j {JOB_ID}
+```
