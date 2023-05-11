@@ -86,7 +86,7 @@ main:
                                     systemId: $${args["systemId"]}
                                     location: $${args["location"]}
                                 summary: $${json.decode(validationResult.body).summary}
-                                filesummary: $${json.decode(validationResult.body).filesSummary}
+                                filesSummary: $${json.decode(validationResult.body).filesSummary}
                     - return:
                         return:
                             execution:
@@ -97,7 +97,7 @@ main:
                                 systemId: $${args["systemId"]}
                                 location: $${args["location"]}
                             summary: $${json.decode(validationResult.body).summary}
-                            filesummary: $${json.decode(validationResult.body).filesSummary}
+                            filesSummary: $${json.decode(validationResult.body).filesSummary}
             except:
                 as: e
                 steps:
