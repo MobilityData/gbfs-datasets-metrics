@@ -2,6 +2,20 @@
 # Validates all GBFS datasets by downloading a JSON version of the system.csv.
 # Depends on  workflow-gbfs-validator workflow
 #
+# Below a snipped of the JSON version of the system.csv
+# [
+#   {
+#     "Country Code": "AR",
+#     "Name": "Bike Nordelta",
+#     "Location": "Buenos Aires, AR",
+#     "System ID": "bike_nordelta",
+#     "URL": "https://bikeitau.com.br/nordelta/",
+#     "Auto-Discovery URL": "https://nordelta.publicbikesystem.net/ube/gbfs/v1/",
+#     "Validation Report": "https://gbfs-validator.netlify.app/?url=https%3A%2F%2Fnordelta.publicbikesystem.net%2Fube%2Fgbfs%2Fv1%2F"
+#   },
+#   ........
+# ]
+#
 ## Input:
 #  {
 #    "url": "https://storage.googleapis.com/md-public-playground/gbfs-system.json",
