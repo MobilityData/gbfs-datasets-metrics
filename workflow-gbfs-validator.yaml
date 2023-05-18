@@ -14,12 +14,12 @@
 # Output:
 # {
 #   "dataset": {
-#     "autoDiscoveryUrl": "https://mds.bird.co/gbfs/v42/public/laval/gbfs.json",
-#     "location": "Madrid, ES",
+#     "autoDiscoveryUrl": "https://dubai.publicbikesystem.net/customer/gbfs/v2/gbfs.json",
+#     "location": "Dubai, AE",
 #     "systemId": "careem_bike"
 #   },
 #   "execution": {
-#     "reportFilename": "Madrid_ES__careem_bike.json",
+#     "reportFilename": "Dubai_AE__careem_bike.json",
 #     "status": "succeeded"
 #   },
 #   "summary": {
