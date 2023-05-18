@@ -1,0 +1,131 @@
+#
+# Validates a GBFS dataset given the system.csv row as a JSON parameter
+#
+## Input
+#  {
+#    "location": "Dubai, AE",
+#    "systemId": "careem_bike",
+#    "autoDiscoveryUrl": "https://dubai.publicbikesystem.net/customer/gbfs/v2/gbfs.json",
+#    "resultsBucketName": "mobilitydata-gbfs-validation-results",
+#    "datasetId": "Dubai_AE_careem_bike"
+#    "reportFilename": "Dubai_AE_careem_bike.json"
+#  }
+##
+# Output:
+# {
+#   "dataset": {
+#     "autoDiscoveryUrl": "https://dubai.publicbikesystem.net/customer/gbfs/v2/gbfs.json",
+#     "location": "Dubai, AE",
+#     "systemId": "careem_bike"
+#   },
+#   "execution": {
+#     "reportFilename": "Dubai_AE__careem_bike.json",
+#     "status": "succeeded"
+#   },
+#   "summary": {
+#       "errorsCount": 0,
+#       "hasErrors": false,
+#       "validatorVersion": "1.0.0",
+#       "version": {
+#       "detected": "1.0",
+#       "validated": "1.0"
+#   },
+#   "filesSummary": [
+#       {
+#           "required": true,
+#           "exists": true,
+#           "file": "gbfs.json",
+#           "hasErrors": false,
+#           "errorsCount": 0
+#       }
+#    ]
+# }
+
+main:
+    params: [args]
+    steps:
+        - validate:
+            try:
+                steps:
+                    - init:
+                        assign:
+                        - resultsBucketName: $${args["resultsBucketName"]}
+                        - datasetId: $${args["datasetId"]}
+                        - reportFilename: $${args["reportFilename"]}
+                        - datasetUrl: $${args["autoDiscoveryUrl"]}
+                        - validatorUrl: ${app_gbs_validator_url} # replaced by terraform variable
+                    - initLog:
+                        call: sys.log
+                        args:
+                            text: $${"Validating dataset " + datasetUrl}
+                            severity: INFO
+                    - validateDataset:
+                        call: http.post
+                        args:
+                            url: $${validatorUrl}
+                            body:
+                                url: $${datasetUrl}
+                        result: validationResult
+                    - logValidationResults:
+                        call: sys.log
+                        args:
+                            text: $${"Dataset validation HTTP code result " + validationResult.code}
+                            severity: INFO
+                    - persistValidation:      
+                        call: googleapis.storage.v1.objects.insert
+                        args:
+                            bucket: $${resultsBucketName}
+                            uploadType: "media"
+                            name: $${reportFilename}
+                            body:
+                                execution:
+                                    status: "succeeded"                        
+                                    reportFilename: $${reportFilename}
+                                dataset:
+                                    autoDiscoveryUrl: $${args["autoDiscoveryUrl"]}
+                                    systemId: $${args["systemId"]}
+                                    location: $${args["location"]}
+                                summary: $${json.decode(validationResult.body).summary}
+                                filesSummary: $${json.decode(validationResult.body).filesSummary}
+                    - return:
+                        return:
+                            execution:
+                                status: "succeeded"                        
+                                reportFilename: $${reportFilename}
+                            dataset:
+                                autoDiscoveryUrl: $${args["autoDiscoveryUrl"]}
+                                systemId: $${args["systemId"]}
+                                location: $${args["location"]}
+                            summary: $${json.decode(validationResult.body).summary}
+                            filesSummary: $${json.decode(validationResult.body).filesSummary}
+            except:
+                as: e
+                steps:
+                    - logException:
+                        call: sys.log
+                        args:
+                            text: $${"Error validating dataset " + datasetId + " exception " + json.encode_to_string(e)}
+                            severity: ERROR
+                    - persistErrorValidation:      
+                        call: googleapis.storage.v1.objects.insert
+                        args:
+                            bucket: $${resultsBucketName}
+                            uploadType: "media"
+                            name: $${reportFilename}
+                            body:
+                                execution:
+                                    status: "failed"                        
+                                    reportFilename: $${reportFilename}
+                                dataset:
+                                    autoDiscoveryUrl: $${args["autoDiscoveryUrl"]}
+                                    systemId: $${args["systemId"]}
+                                    location: $${args["location"]}
+                                summary: {}                            
+                    - unhandled_exception:
+                        return:
+                            execution:
+                                status: "failed"
+                            dataset:
+                                autoDiscoveryUrl: $${args["autoDiscoveryUrl"]}
+                                systemId: $${args["systemId"]}
+                                location: $${args["location"]}                         

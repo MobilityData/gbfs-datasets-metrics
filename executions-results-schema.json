@@ -1,0 +1,122 @@
+[
+  {
+    "fields": [
+      {
+        "fields": [
+          {
+            "mode": "NULLABLE",
+            "name": "validated",
+            "type": "FLOAT"
+          },
+          {
+            "mode": "NULLABLE",
+            "name": "detected",
+            "type": "FLOAT"
+          }
+        ],
+        "mode": "NULLABLE",
+        "name": "version",
+        "type": "RECORD"
+      },
+      {
+        "mode": "NULLABLE",
+        "name": "validatorVersion",
+        "type": "STRING"
+      },
+      {
+        "mode": "NULLABLE",
+        "name": "hasErrors",
+        "type": "BOOLEAN"
+      },
+      {
+        "mode": "NULLABLE",
+        "name": "errorsCount",
+        "type": "INTEGER"
+      },
+      {
+        "mode": "NULLABLE",
+        "name": "versionUnimplemented",
+        "type": "BOOLEAN"
+      }
+    ],
+    "mode": "NULLABLE",
+    "name": "summary",
+    "type": "RECORD"
+  },
+  {
+    "fields": [
+      {
+        "mode": "NULLABLE",
+        "name": "required",
+        "type": "BOOLEAN"
+      },
+      {
+        "mode": "NULLABLE",
+        "name": "exists",
+        "type": "BOOLEAN"
+      },
+      {
+        "mode": "NULLABLE",
+        "name": "hasErrors",
+        "type": "BOOLEAN"
+      },
+      {
+        "mode": "NULLABLE",
+        "name": "file",
+        "type": "STRING"
+      },
+      {
+        "mode": "NULLABLE",
+        "name": "errorsCount",
+        "type": "INTEGER"
+      }
+    ],
+    "mode": "REPEATED",
+    "name": "filesSummary",
+    "type": "RECORD"
+  },
+  {
+    "fields": [
+      {
+        "mode": "NULLABLE",
+        "name": "status",
+        "type": "STRING"
+      },
+      {
+        "mode": "NULLABLE",
+        "name": "reportFilename",
+        "type": "STRING"
+      },
+      {
+        "mode": "NULLABLE",
+        "name": "resultsBucketName",
+        "type": "STRING"
+      }
+    ],
+    "mode": "NULLABLE",
+    "name": "execution",
+    "type": "RECORD"
+  },
+  {
+    "fields": [
+      {
+        "mode": "NULLABLE",
+        "name": "systemId",
+        "type": "STRING"
+      },
+      {
+        "mode": "NULLABLE",
+        "name": "location",
+        "type": "STRING"
+      },
+      {
+        "mode": "NULLABLE",
+        "name": "autoDiscoveryUrl",
+        "type": "STRING"
+      }
+    ],
+    "mode": "NULLABLE",
+    "name": "dataset",
+    "type": "RECORD"
+  }
+]
