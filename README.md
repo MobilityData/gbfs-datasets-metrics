@@ -1,6 +1,6 @@
 # GBFS Datasets Metrics(POC)
 
-This work is a Proof of Concept on data pipeline to obtain GBFS datasets validation reports metrics. This project setup the requirements infraestructure to process the GBFS metrics based on [GCP workflow](https://cloud.google.com/workflows).
+This work is a Proof of Concept on data pipeline to obtain GBFS datasets validation reports metrics. This project setup the requirements infrastructure to process the GBFS metrics based on [GCP workflow](https://cloud.google.com/workflows).
 
 ## Current Limitation
 
